@@ -16,6 +16,8 @@ class MyModel(nn.Module):
         item_aux_dim  item辅助信息的维度
         vad_dim       item辅助信息embedding的维度
         """
+        self.uid_dim = uid_dim
+        self.vad_dim = vad_dim
         super(MyModel, self).__init__()
         self.user_embed = nn.Embedding(user_dim, uid_dim)
         self.item_embed = nn.Embedding(item_dim, vid_dim)
@@ -29,10 +31,12 @@ class MyModel(nn.Module):
                 )
 
     def forward(self, user, user_aux, item, item_aux):
-        self.uid = self.user_embed(user)
+        # self.uid = self.user_embed(user)
+        self.uid = torch.zeros(self.uid_dim)
         self.uad = self.user_aux_net(user_aux)
         self.vid = torch.mm(item, self.item_embed.weight)  # batch_size*embed_dim
-        self.vad = self.item_aux_net(item_aux)
+        # self.vad = self.item_aux_net(item_aux)
+        self.vad = torch.zeros(self.vad_dim)
         self.u = self.uid + self.uad
         self.v = self.vid + self.vad
         s = nn.Sigmoid()
