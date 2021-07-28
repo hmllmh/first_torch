@@ -4,28 +4,29 @@ import json
 from torch.utils.data import Dataset
 
 class MyDataset(Dataset):
-    def __init__(self, path, is_train, item_num=0):
+    def __init__(self, path, is_train):
         with open(path, 'r') as f:
             self.data = json.load(f)
-            self.is_train = is_train
-            if is_train:
-                self.user_num = self.data[-1]['user_num']
-                self.item_num = self.data[-1]['item_num']
-                self.data = self.data[:-1]
-            else:
-                self.item_num = item_num
+        self.is_train = is_train
+        self.dtagid = 204572
+        self.dlocate = 2
+        self.dmobile = 2
 
     def __getitem__(self, index):
-        user = torch.from_numpy(np.array(self.data[index]['pid']))
-        user_aux = torch.from_numpy(np.array([self.data[index]['gender'], self.data[index]['age'], self.data[index]['model'], self.data[index]['make']])).float()
-        item_aux = torch.Tensor([0, 0, 0, 0])
+        index = str(index)
+        if type(self.data[index]) == type('a'):
+            self.data[index] = json.loads(self.data[index])
+        locate = torch.from_numpy(np.array([self.data[index]['province'], self.data[index]['city']])).float()
+        mobile = torch.from_numpy(np.array([self.data[index]['model'], self.data[index]['make']])).float()
         tagid = torch.from_numpy(np.array(self.data[index]['tagid']))
         tagid = tagid.unsqueeze(0)
-        item = torch.zeros(tagid.size(0), self.item_num).scatter_(1, tagid, 1).squeeze()  # multi-hot
+        temp = torch.zeros(tagid.size(0), self.dtagid)  # 若tagid为空,则multi-hot全0
+        tagid = temp.squeeze() if tagid.shape[1] == 0 else temp.scatter_(1, tagid, 1).squeeze()  # multi-hot
         if self.is_train:
-            y = torch.from_numpy(np.array(self.data[index]['label'])).float()
-            return user, user_aux, item, item_aux, y
-        return user, user_aux, item, item_aux
+            y = torch.from_numpy(np.array(self.data[index]['buy'])).float()
+            return tagid, locate, mobile, y
+        user = torch.tensor(int(self.data[index]['pid']))
+        return tagid, locate, mobile, user
 
     def __len__(self):
         return len(self.data)
