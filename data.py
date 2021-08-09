@@ -1,33 +1,43 @@
 import torch
 import numpy as np
 import json
+import pickle
 from torch.utils.data import Dataset
 
 class MyDataset(Dataset):
-    def __init__(self, path, is_train):
-        with open(path, 'r') as f:
-            self.data = json.load(f)
-        self.is_train = is_train
-        self.dtagid = 204572
-        self.dlocate = 2
-        self.dmobile = 2
+    def __init__(self, userp, itemp, negap):
+        user = self.read_pickle(userp)
+        item = self.read_pickle(itemp)
+        nega = self.read_pickle(negap)
+        self.user_num = len(user)
+        self.item_num = len(item)
+        self.user = []
+        self.item = []
+        self.y    = []
+        # y = 1, 喜欢的item
+        for u in range(self.user_num):
+            for i in range(len(user[u])):
+                self.user.append(u)
+                self.item.append(user[u][i])
+                self.y.append(1)
+        # y = 0, 不喜欢的item
+        for u in range(self.user_num):
+            for i in range(len(nega[u])):
+                self.user.append(u)
+                self.item.append(nega[u][i])
+                self.y.append(0)
 
     def __getitem__(self, index):
-        index = str(index)
-        if type(self.data[index]) == type('a'):
-            self.data[index] = json.loads(self.data[index])
-        locate = torch.from_numpy(np.array([self.data[index]['province'], self.data[index]['city']])).float()
-        mobile = torch.from_numpy(np.array([self.data[index]['model'], self.data[index]['make']])).float()
-        tagid = torch.from_numpy(np.array(self.data[index]['tagid']))
-        tagid = tagid.unsqueeze(0)
-        temp = torch.zeros(tagid.size(0), self.dtagid)  # 若tagid为空,则multi-hot全0
-        tagid = temp.squeeze() if tagid.shape[1] == 0 else temp.scatter_(1, tagid, 1).squeeze()  # multi-hot
-        if self.is_train:
-            y = torch.from_numpy(np.array(self.data[index]['buy'])).float()
-            return tagid, locate, mobile, y
-        user = torch.tensor(int(self.data[index]['pid']))
-        return tagid, locate, mobile, user
+        user_id = torch.from_numpy(np.array(self.user[index]))
+        item_id = torch.from_numpy(np.array(self.item[index]))
+        y = torch.from_numpy(np.array(self.y[index])).float()
+        return user_id, item_id, y
 
     def __len__(self):
-        return len(self.data)
+        return len(self.user)
+
+    def read_pickle(self, name):
+        with open(name, 'rb') as f:
+            data = pickle.load(f, encoding='bytes')
+        return data
 
